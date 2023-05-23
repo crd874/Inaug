@@ -4,7 +4,6 @@ import numpy as np
 from scipy import optimize
 
 import pandas as pd 
-import matplotlib.pyplot as plt
 
 class HouseholdSpecializationModelClass:
 
@@ -23,7 +22,7 @@ class HouseholdSpecializationModelClass:
         par.omega = 0.5 
         par.epsilon_w = 1.0
         par.epsilon_m = 1.0
-        par.gender = 0.0 #dummy for whether we use model in Question 5 or not.
+        par.gender = 0.0 # Dummy for whether we use extension in Q5 or not
 
         # c. household production
         par.alpha = 0.5
@@ -86,6 +85,7 @@ class HouseholdSpecializationModelClass:
         disutility = par.nu*(TM**epsilon_m/epsilon_m+TF**epsilon_w/epsilon_w)
 
         return utility - disutility
+    
 
     def solve_discrete(self,do_print=False):
         """ solve model discretely """
@@ -126,12 +126,14 @@ class HouseholdSpecializationModelClass:
     def solve(self):
         """ solve model continously """
         sol = self.sol
-        
-        # a. objective function: negative since we minimize
-        obj = lambda x: -self.calc_utility(x[0],x[1],x[2],x[3])
 
-        # Note: We do not use constrained optimization, our results are within the constraint.
-        
+        # a. objective function: negative since we minimize
+        def obj(x):
+            if (x[0] + x[1] > 24) or (x[2] + x[3] > 24): # set to minus infinity if constraint is broken
+                return -np.inf
+            else:
+                return -self.calc_utility(x[0],x[1],x[2],x[3])
+
         # b. bounds on hours 
         bounds = [(0,24)]*4
             
@@ -140,12 +142,13 @@ class HouseholdSpecializationModelClass:
 
         # d. call optimizer
         res = optimize.minimize(obj, initial_guess, method='Nelder-Mead', bounds=bounds)
-
+        
         # e. store results
         sol.LM = res.x[0]
         sol.HM = res.x[1]
         sol.LF = res.x[2]
         sol.HF = res.x[3]
+        
 
         return res
             
@@ -189,7 +192,7 @@ class HouseholdSpecializationModelClass:
         par = self.par
         
         # a. different initial guesses for our models
-        if par.gender==1:
+        if par.gender==1: # When using extension in Q5
             init = [0.5, 1, 1]
         else:
             init = [0.5,0.5]
@@ -210,10 +213,11 @@ class HouseholdSpecializationModelClass:
 
                     
     def objective_regression(self, x):
+        """ Finding deviation that we want to minimize """
         par = self.par
         sol = self.sol
 
-        # a. runinning regression
+        # a. running regression
         if par.gender==1:
             par.sigma = x[0]
             par.epsilon_w = x[1]
